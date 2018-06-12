@@ -38,7 +38,7 @@ PlanningGraph::PlanningGraph(RobotModelConstPtr model, CostFunction cost_functio
   : graph_(model->getDOF()), robot_model_(std::move(model)), custom_cost_function_(cost_function_callback)
 {}
 
-bool PlanningGraph::insertGraph(const std::vector<TrajectoryPtPtr>& points)
+bool PlanningGraph::insertGraph(const std::vector<TrajectoryPtPtr>& points, std::vector<int>* failed_points)
 {
   if (points.size() < 2)
   {
@@ -50,7 +50,7 @@ bool PlanningGraph::insertGraph(const std::vector<TrajectoryPtPtr>& points)
 
   // generate solutions for this point
   std::vector<std::vector<std::vector<double>>> all_joint_sols;
-  if (!calculateJointSolutions(points.data(), points.size(), all_joint_sols))
+  if (!calculateJointSolutions(points.data(), points.size(), all_joint_sols, failed_points))
   {
     return false;
   }
@@ -184,7 +184,7 @@ bool PlanningGraph::getShortestPath(double& cost, std::list<JointTrajectoryPt>& 
 }
 
 bool PlanningGraph::calculateJointSolutions(const TrajectoryPtPtr* points, const std::size_t count,
-                                            std::vector<std::vector<std::vector<double>>>& poses) const
+                                            std::vector<std::vector<std::vector<double>>>& poses, std::vector<int>* failed_points) const
 {
   poses.resize(count);
   bool success = true;
@@ -192,7 +192,22 @@ bool PlanningGraph::calculateJointSolutions(const TrajectoryPtPtr* points, const
   #pragma omp parallel for shared(success)
   for (std::size_t i = 0; i < count; ++i)
   {
-    if (success)
+    if (failed_points == NULL)
+    {
+      if (success)
+      {
+      std::vector<std::vector<double>> joint_poses;
+      points[i]->getJointPoses(*robot_model_, joint_poses);
+
+        if (joint_poses.empty())
+        {
+          ROS_ERROR_STREAM(__FUNCTION__ << ": IK failed for input trajectory point with ID = " << points[i]->getID());
+          success = false;
+        }
+        poses[i] = std::move(joint_poses);
+      }
+    }
+    else
     {
       std::vector<std::vector<double>> joint_poses;
       points[i]->getJointPoses(*robot_model_, joint_poses);
@@ -201,8 +216,13 @@ bool PlanningGraph::calculateJointSolutions(const TrajectoryPtPtr* points, const
       {
         ROS_ERROR_STREAM(__FUNCTION__ << ": IK failed for input trajectory point with ID = " << points[i]->getID());
         success = false;
-      }
 
+        if (failed_points != NULL)
+        #pragma omp critical ( insert_failure )
+        {
+          failed_points->push_back(i);
+        }
+      }
       poses[i] = std::move(joint_poses);
     }
   }

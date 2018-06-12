@@ -33,6 +33,7 @@ public:
   virtual bool modify(const descartes_core::TrajectoryPt::ID& ref_id, descartes_core::TrajectoryPtPtr tp);
   virtual int getErrorCode() const;
   virtual bool getErrorMessage(int error_code, std::string& msg) const;
+  std::vector<int> getFailedPoints( ) const;
 
   // Helper functions meant to access the underlying graph structure
 
@@ -50,6 +51,7 @@ protected:
 protected:
   boost::shared_ptr<descartes_planner::PlanningGraph> planning_graph_;
   int error_code_;
+  std::vector<int> failed_points_;
   descartes_core::PlannerConfig config_;
   std::vector<descartes_core::TrajectoryPtPtr> path_;
   std::map<int, std::string> error_map_;
