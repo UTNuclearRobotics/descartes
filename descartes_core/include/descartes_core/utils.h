@@ -80,7 +80,7 @@ static Eigen::Affine3d toFrame(double tx, double ty, double tz, double rx, doubl
       break;
 
     default:
-      logError("Invalid euler convention entry %i", convention);
+      ROS_ERROR_NAMED("descartes", "Invalid euler convention entry %i", convention);
       break;
   }
 
