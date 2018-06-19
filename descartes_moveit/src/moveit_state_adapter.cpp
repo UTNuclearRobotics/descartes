@@ -16,8 +16,6 @@
  * limitations under the License.
  */
 
-#include <console_bridge/console.h>
-
 #include "descartes_moveit/moveit_state_adapter.h"
 #include "descartes_core/pretty_print.hpp"
 #include "descartes_moveit/seed_search.h"
